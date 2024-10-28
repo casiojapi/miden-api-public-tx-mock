@@ -1,8 +1,11 @@
 import express, { Request, Response, RequestHandler } from 'express';
+import cors from 'cors';
 
 const app = express();
 const PORT = process.env.PORT || 3500;
 
+// Enable CORS for all routes
+app.use(cors());
 app.use(express.json()); // Parse JSON request bodies
 
 // Mock storage
