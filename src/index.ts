@@ -15,28 +15,42 @@ let notes: any[] = [];
 // Create Account
 const createAccount: RequestHandler = (req: Request, res: Response) => {
 	const { user_id, username } = req.body;
-	const accountId = `acc_${user_id}`;
 
-	if (accounts[accountId]) {
+	if (accounts[user_id]) {
+		console.log("create account nonok", accounts)
 		res.status(400).json({ error: 'Account already exists.' });
 		return;
 	}
 
-	accounts[accountId] = {
-		id: accountId,
+	accounts[user_id] = {
+		id: user_id,
 		user_id,
 		username,
 		balance: '100 ETH', // Give initial balance for testing
 		notes: [],
 	};
 
-	res.json({ message: 'Account created successfully.', account: accounts[accountId] });
+	console.log("create account ok", accounts)
+	res.json({ message: 'Account created successfully.', account: accounts[user_id] });
 };
 
 // Get User Notes
 const getUserNotes: RequestHandler = (req: Request, res: Response) => {
 	const { userId } = req.params;
-	const userNotes = notes.filter((note) => note.receiver_id === `acc_${userId}`);
+	console.log(`Fetching notes for userId: ${userId}`); // Debugging
+
+	const userNotes = notes.filter((note) => {
+		console.log(`Checking note:`, note); // Debug each note
+		return note.receiver_id === userId; // Match userId directly
+	});
+
+	if (userNotes.length === 0) {
+		console.log('No notes found for user:', userId); // Debugging
+		res.status(404).json({ error: 'No notes found for this user.' });
+		return;
+	}
+
+	console.log('Notes found:', userNotes); // Debugging
 	res.json(userNotes);
 };
 
@@ -75,42 +89,46 @@ const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
 
 // Consume a Note
 const consumeNote: RequestHandler = (req: Request, res: Response) => {
-	const { account_id, note_id } = req.body;
-	const note = notes.find((n) => n.note_id === note_id && n.receiver_id === account_id);
+	const { user_id, note_id } = req.body;
+	const note = notes.find((n) => n.note_id === note_id && n.receiver_id === user_id);
 
 	if (!note) {
 		res.status(404).json({ error: 'Note not found or not intended for this account.' });
 		return;
 	}
 
-	const accountBalance = parseFloat(accounts[account_id].balance);
-	accounts[account_id].balance = `${accountBalance + parseFloat(note.amount)} ETH`;
+	const accountBalance = parseFloat(accounts[user_id].balance);
+	accounts[user_id].balance = `${accountBalance + parseFloat(note.amount)} ETH`;
 
 	// Remove the consumed note
 	notes = notes.filter((n) => n.note_id !== note_id);
 
-	res.json({ message: 'Note consumed successfully.', account: accounts[account_id] });
+	res.json({ message: 'Note consumed successfully.', account: accounts[user_id] });
 };
 
 // Get Account Details
+// Get Account Details
 const getAccountDetails: RequestHandler = (req: Request, res: Response) => {
-	const { accountId } = req.params;
-	const account = accounts[accountId];
+	const { userId } = req.params; // Use 'userId' instead of 'user_id'
+	const account = accounts[userId]; // Fetch the account using the correct key
+
+	console.log(req.params); // Should log: { userId: '1' }
 
 	if (!account) {
+		console.log('get account details nonok', accounts);
 		res.status(404).json({ error: 'Account not found.' });
 		return;
 	}
 
+	console.log('get account details ok', accounts);
 	res.json(account);
 };
-
 // Register Routes
 app.post('/api/account/create', createAccount);
 app.get('/api/account/:userId/notes', getUserNotes);
 app.post('/api/notes/public/send', sendPublicNote);
 app.post('/api/notes/consume', consumeNote);
-app.get('/api/account/:accountId', getAccountDetails);
+app.get('/api/account/:userId', getAccountDetails);
 
 // Start Server
 app.listen(PORT, () => {
