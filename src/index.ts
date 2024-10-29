@@ -4,17 +4,16 @@ import cors from 'cors';
 const app = express();
 const PORT = process.env.PORT || 3500;
 
-// Enable CORS for all routes
 app.use(cors());
-app.use(express.json()); // Parse JSON request bodies
+app.use(express.json());
 
-// Mock storage
+// mock storage
 let accounts: Record<string, any> = {};
 let notes: any[] = [];
 let usernameToUserIdMap: Record<string, string> = {};
 
 
-// Create Account
+// create account
 const createAccount: RequestHandler = (req: Request, res: Response) => {
 	const { user_id, username } = req.body;
 
@@ -39,37 +38,37 @@ const createAccount: RequestHandler = (req: Request, res: Response) => {
 		notes: [],
 	};
 
-	usernameToUserIdMap[username] = user_id; // Add the mapping for username -> user_id
+	usernameToUserIdMap[username] = user_id; // add the mapping for telegram username -> user_id
 
 	console.log("create account ok", accounts)
 	res.json({ message: 'Account created successfully.', account: accounts[user_id] });
 };
 
-// Get User Notes
+// get user notes
 const getUserNotes: RequestHandler = (req: Request, res: Response) => {
 	const { userId } = req.params;
-	console.log(`Fetching notes for userId: ${userId}`); // Debugging
+	console.log(`Fetching notes for userId: ${userId}`);
 
 	const userNotes = notes.filter((note) => {
-		console.log(`Checking note:`, note); // Debug each note
-		return note.receiver_id === userId; // Match userId directly
+		console.log(`Checking note:`, note);
+		return note.receiver_id === userId;
 	});
 
 	if (userNotes.length === 0) {
-		console.log('No notes found for user:', userId); // Debugging
-		res.status(404).json({ error: 'No notes found for this user.' });
+		console.log('No notes found for user:', userId);
+		res.status(200).json({ message: 'No notes found for this user.' });
 		return;
 	}
 
-	console.log('Notes found:', userNotes); // Debugging
+	console.log('Notes found:', userNotes);
 	res.json(userNotes);
 };
 
-// Send Public Note (with support for both user_id and username)
+// send public note (with support for both user_id and username)
 const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
 	let { sender_id, receiver_id, amount, receiver_username } = req.body;
 
-	// Lookup receiver_id if receiver_username is provided
+	// falopa para user -> id 
 	if (receiver_username) {
 		receiver_id = usernameToUserIdMap[receiver_username];
 		if (!receiver_id) {
@@ -89,7 +88,6 @@ const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
 		return;
 	}
 
-	// Create the public note
 	const note = {
 		note_id: `note_${Date.now()}`,
 		sender_id,
@@ -99,7 +97,6 @@ const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
 		timestamp: new Date().toISOString(),
 	};
 
-	// Deduct amount from sender's balance
 	accounts[sender_id].balance = `${senderBalance - parseFloat(amount)} ETH`;
 	notes.push(note);
 
@@ -139,7 +136,7 @@ const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
 // 	res.json({ message: 'Public note sent successfully.', note });
 // };
 
-// Consume a Note
+// consume a note
 const consumeNote: RequestHandler = (req: Request, res: Response) => {
 	const { user_id, note_id } = req.body;
 	const note = notes.find((n) => n.note_id === note_id && n.receiver_id === user_id);
@@ -152,19 +149,18 @@ const consumeNote: RequestHandler = (req: Request, res: Response) => {
 	const accountBalance = parseFloat(accounts[user_id].balance);
 	accounts[user_id].balance = `${accountBalance + parseFloat(note.amount)} ETH`;
 
-	// Remove the consumed note
+	// remove the consumed note
 	notes = notes.filter((n) => n.note_id !== note_id);
 
 	res.json({ message: 'Note consumed successfully.', account: accounts[user_id] });
 };
 
-// Get Account Details
-// Get Account Details
+// get account details
 const getAccountDetails: RequestHandler = (req: Request, res: Response) => {
-	const { userId } = req.params; // Use 'userId' instead of 'user_id'
-	const account = accounts[userId]; // Fetch the account using the correct key
+	const { userId } = req.params;
+	const account = accounts[userId];
 
-	console.log(req.params); // Should log: { userId: '1' }
+	console.log(req.params);
 
 	if (!account) {
 		console.log('get account details nonok', accounts);
@@ -175,14 +171,15 @@ const getAccountDetails: RequestHandler = (req: Request, res: Response) => {
 	console.log('get account details ok', accounts);
 	res.json(account);
 };
-// Register Routes
+
+
 app.post('/api/account/create', createAccount);
 app.get('/api/account/:userId/notes', getUserNotes);
 app.post('/api/notes/public/send', sendPublicNote);
 app.post('/api/notes/consume', consumeNote);
 app.get('/api/account/:userId', getAccountDetails);
 
-// Start Server
+// start server
 app.listen(PORT, () => {
 	console.log(`Server running on http://localhost:${PORT}`);
 });
