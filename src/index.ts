@@ -11,14 +11,23 @@ app.use(express.json()); // Parse JSON request bodies
 // Mock storage
 let accounts: Record<string, any> = {};
 let notes: any[] = [];
+let usernameToUserIdMap: Record<string, string> = {};
+
 
 // Create Account
 const createAccount: RequestHandler = (req: Request, res: Response) => {
 	const { user_id, username } = req.body;
 
-	if (accounts[user_id]) {
-		console.log("create account nonok", accounts)
-		res.status(400).json({ error: 'Account already exists.' });
+	// if (accounts[user_id]) {
+	// 	console.log("create account nonok", accounts)
+	// 	res.status(400).json({ error: 'Account already exists.' });
+	// 	return;
+	// }
+
+	const usernameExists = Object.values(accounts).some(acc => acc.username === username);
+	if (accounts[user_id] || usernameExists) {
+		console.log("Account creation failed: Duplicate user_id or username", accounts);
+		res.status(400).json({ error: 'Account with this user_id or username already exists.' });
 		return;
 	}
 
@@ -26,9 +35,11 @@ const createAccount: RequestHandler = (req: Request, res: Response) => {
 		id: user_id,
 		user_id,
 		username,
-		balance: '100 ETH', // Give initial balance for testing
+		balance: '100 ETH',
 		notes: [],
 	};
+
+	usernameToUserIdMap[username] = user_id; // Add the mapping for username -> user_id
 
 	console.log("create account ok", accounts)
 	res.json({ message: 'Account created successfully.', account: accounts[user_id] });
@@ -54,9 +65,18 @@ const getUserNotes: RequestHandler = (req: Request, res: Response) => {
 	res.json(userNotes);
 };
 
-// Send Public Note
+// Send Public Note (with support for both user_id and username)
 const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
-	const { sender_id, receiver_id, amount } = req.body;
+	let { sender_id, receiver_id, amount, receiver_username } = req.body;
+
+	// Lookup receiver_id if receiver_username is provided
+	if (receiver_username) {
+		receiver_id = usernameToUserIdMap[receiver_username];
+		if (!receiver_id) {
+			res.status(404).json({ error: 'Receiver username not found.' });
+			return;
+		}
+	}
 
 	if (!accounts[sender_id] || !accounts[receiver_id]) {
 		res.status(404).json({ error: 'Sender or receiver account not found.' });
@@ -81,11 +101,43 @@ const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
 
 	// Deduct amount from sender's balance
 	accounts[sender_id].balance = `${senderBalance - parseFloat(amount)} ETH`;
-
 	notes.push(note);
 
 	res.json({ message: 'Public note sent successfully.', note });
 };
+
+// // Send Public Note
+// const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
+// 	const { sender_id, receiver_id, amount } = req.body;
+
+// 	if (!accounts[sender_id] || !accounts[receiver_id]) {
+// 		res.status(404).json({ error: 'Sender or receiver account not found.' });
+// 		return;
+// 	}
+
+// 	const senderBalance = parseFloat(accounts[sender_id].balance);
+// 	if (senderBalance < parseFloat(amount)) {
+// 		res.status(400).json({ error: 'Insufficient balance.' });
+// 		return;
+// 	}
+
+// 	// Create the public note
+// 	const note = {
+// 		note_id: `note_${Date.now()}`,
+// 		sender_id,
+// 		receiver_id,
+// 		amount,
+// 		note_type: 'public',
+// 		timestamp: new Date().toISOString(),
+// 	};
+
+// 	// Deduct amount from sender's balance
+// 	accounts[sender_id].balance = `${senderBalance - parseFloat(amount)} ETH`;
+
+// 	notes.push(note);
+
+// 	res.json({ message: 'Public note sent successfully.', note });
+// };
 
 // Consume a Note
 const consumeNote: RequestHandler = (req: Request, res: Response) => {
