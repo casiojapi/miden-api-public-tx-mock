@@ -1,20 +1,25 @@
-## create account 
-
-curl -X POST https://miden-api-public-tx-mock.onrender.com/api/account/create \
+## create account (sender)
+curl -X POST http://localhost:3500/api/account/create \
 -H "Content-Type: application/json" \
 -d '{
   "user_id": "1",
-  "username": "testuser"
+  "username": "sender"
+}'
+
+## create account (receiver)
+curl -X POST http://localhost:3500/api/account/create \
+-H "Content-Type: application/json" \
+-d '{
+  "user_id": "2",
+  "username": "receiver"
 }'
 
 ## get account details
-
-curl -X GET https://miden-api-public-tx-mock.onrender.com/api/account/1
+curl -X GET http://localhost:3500/api/account/1
 
 
 ## send public note
-
-curl -X POST https://miden-api-public-tx-mock.onrender.com/api/notes/public/send \
+curl -X POST http://localhost:3500/api/notes/public/send \
 -H "Content-Type: application/json" \
 -d '{
   "sender_id": "1",
@@ -22,15 +27,24 @@ curl -X POST https://miden-api-public-tx-mock.onrender.com/api/notes/public/send
   "amount": "50"
 }'
 
+
+## send note to tg username
+curl -X POST http://localhost:3500/api/notes/public/send \
+-H "Content-Type: application/json" \
+-d '{
+  "sender_id": "1",
+  "receiver_username": "receiver",
+  "amount": "25"
+}'
+
+
 ## get user notes
+curl -X GET http://localhost:3500/api/account/2/notes
 
-curl -X GET https://miden-api-public-tx-mock.onrender.com/api/account/1/notes
-
-## consume notes
-
-curl -X POST https://miden-api-public-tx-mock.onrender.com/api/notes/consume \
+## consume note
+curl -X POST http://localhost:3500/api/notes/consume \
 -H "Content-Type: application/json" \
 -d '{
   "user_id": "2",
-  "note_id": "note_1698314361000"
+  "note_id": "note_YOURNOTEID"
 }'
