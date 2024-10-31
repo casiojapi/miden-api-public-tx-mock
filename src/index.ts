@@ -11,7 +11,13 @@ app.use(express.json());
 let accounts: Record<string, any> = {};
 let notes: any[] = [];
 let usernameToUserIdMap: Record<string, string> = {};
+// Retrieve all usernames for autocomplete
+const getAllUsernames: RequestHandler = (_req: Request, res: Response) => {
+	const usernames = Object.keys(usernameToUserIdMap);
+	res.json(usernames);
+};
 
+app.get('/api/usernames', getAllUsernames);
 
 // create account
 const createAccount: RequestHandler = (req: Request, res: Response) => {
@@ -27,8 +33,7 @@ const createAccount: RequestHandler = (req: Request, res: Response) => {
 	accounts[user_id] = {
 		id: user_id,
 		user_id,
-		username,
-		balance: '100 ETH',
+		username, balance: '100 ETH',
 		notes: [],
 	};
 
