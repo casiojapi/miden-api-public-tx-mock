@@ -17,12 +17,6 @@ let usernameToUserIdMap: Record<string, string> = {};
 const createAccount: RequestHandler = (req: Request, res: Response) => {
 	const { user_id, username } = req.body;
 
-	// if (accounts[user_id]) {
-	// 	console.log("create account nonok", accounts)
-	// 	res.status(400).json({ error: 'Account already exists.' });
-	// 	return;
-	// }
-
 	const usernameExists = Object.values(accounts).some(acc => acc.username === username);
 	if (accounts[user_id] || usernameExists) {
 		console.log("Account creation failed: Duplicate user_id or username", accounts);
@@ -103,6 +97,62 @@ const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
 	res.json({ message: 'Public note sent successfully.', note });
 };
 
+// Send transaction and update sender and receiver balances
+const sendTransaction: RequestHandler = (req: Request, res: Response) => {
+	const { sender_id, receiver_id, amount, receiver_username } = req.body;
+
+	let receiverFinalId = receiver_id;
+
+	// Resolve receiver ID if only username is provided
+	if (receiver_username) {
+		receiverFinalId = usernameToUserIdMap[receiver_username];
+		if (!receiverFinalId) {
+			res.status(404).json({ error: 'Receiver username not found.' });
+			return;
+		}
+	}
+
+	if (!accounts[sender_id] || !accounts[receiverFinalId]) {
+		res.status(404).json({ error: 'Sender or receiver account not found.' });
+		return;
+	}
+
+	const senderBalance = parseFloat(accounts[sender_id].balance);
+	if (senderBalance < parseFloat(amount)) {
+		res.status(400).json({ error: 'Insufficient balance.' });
+		return;
+	}
+
+	// Deduct from sender and add to receiver
+	accounts[sender_id].balance = `${senderBalance - parseFloat(amount)} ETH`;
+	const receiverBalance = parseFloat(accounts[receiverFinalId].balance);
+	accounts[receiverFinalId].balance = `${receiverBalance + parseFloat(amount)} ETH`;
+
+	// Add to transaction history
+	const transaction = {
+		transaction_id: `txn_${Date.now()}`,
+		sender_id,
+		receiver_id: receiverFinalId,
+		amount,
+		timestamp: new Date().toISOString(),
+	};
+	notes.push(transaction);
+
+	res.json({ message: 'Transaction successful', transaction });
+};
+
+const getTransactionHistory: RequestHandler = (req: Request, res: Response) => {
+	const { userId } = req.params;
+
+	const userTransactions = notes.filter(
+		(note) => note.sender_id === userId || note.receiver_id === userId
+	);
+
+	res.json({ transactions: userTransactions });
+};
+
+app.get('/api/account/:userId/transactions', getTransactionHistory);
+
 // // Send Public Note
 // const sendPublicNote: RequestHandler = (req: Request, res: Response) => {
 // 	const { sender_id, receiver_id, amount } = req.body;
@@ -173,6 +223,7 @@ const getAccountDetails: RequestHandler = (req: Request, res: Response) => {
 };
 
 
+app.post('/api/transactions/send', sendTransaction);
 app.post('/api/account/create', createAccount);
 app.get('/api/account/:userId/notes', getUserNotes);
 app.post('/api/notes/public/send', sendPublicNote);
